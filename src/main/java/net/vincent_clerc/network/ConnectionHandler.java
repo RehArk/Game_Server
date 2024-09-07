@@ -6,18 +6,19 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
 
 public class ConnectionHandler {
 
     private NetworkManager manager;
-    private Callable connectionCallback;
+    private Callable playerConnectionCallback;
 
     public ConnectionHandler(
         NetworkManager manager,
-        Callable connectionCallback
+        Callable playerConnectionCallback
     ) {
         this.manager = manager;
-        this.connectionCallback = connectionCallback;
+        this.playerConnectionCallback = playerConnectionCallback;
     }
 
     public void handleConnection() {
@@ -52,11 +53,8 @@ public class ConnectionHandler {
         clientSocket.register(this.manager.getSelector(), SelectionKey.OP_READ);
 
         try {
-            this.connectionCallback.call();
-            ByteBuffer buffer = ByteBuffer.allocate(1024);
-            buffer.put("Connected".getBytes());
-            buffer.flip();
-            clientSocket.write(buffer);
+            String output = (String) this.playerConnectionCallback.call();
+            this.manager.sendMessage(clientSocket, output);
         } catch (Exception e) {
             System.out.println();
         }

@@ -2,8 +2,11 @@ package net.vincent_clerc.network;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
+import java.util.concurrent.Callable;
 
 public class NetworkManager {
 
@@ -14,8 +17,15 @@ public class NetworkManager {
 
     private ConnectionHandler connectionHandler;
 
-    public NetworkManager(Integer port) {
-        this.port = port;    
+    private Callable playerConnectionCallback;
+
+
+    public NetworkManager(
+        Integer port,
+        Callable playerConnectionCallback
+    ) {
+        this.port = port;
+        this.playerConnectionCallback = playerConnectionCallback;
     }
 
     public ServerSocketChannel getServerSocketChannel() {
@@ -31,12 +41,12 @@ public class NetworkManager {
         System.out.println("Game server will start on port " + port);
 
         this.initializeConnection();
-        this.createConnectionHandler();
+        this.connectionHandler = new ConnectionHandler(this, this.playerConnectionCallback);
 
         System.out.println("Game server started on port " + port);
 
         while (true) {
-            this.handleConnection();
+            this.connectionHandler.handleConnection();
         }
 
     }
@@ -64,17 +74,15 @@ public class NetworkManager {
         this.serverSocketChannel.register(this.selector, this.serverSocketChannel.validOps());
     }
 
-    private void createConnectionHandler() {
+    public void sendMessage(SocketChannel clientSocket, String message) throws IOException {
 
-        this.connectionHandler = new ConnectionHandler(this, () -> {
-            System.out.println("Connexion handled");
-            return null;
-        });
+        byte[] byteOutput = message.getBytes();
+        ByteBuffer buffer = ByteBuffer.allocate(byteOutput.length);
 
-    }
+        buffer.put(message.getBytes());
+        buffer.flip();
+        clientSocket.write(buffer);
 
-    private void handleConnection() {
-        this.connectionHandler.handleConnection();
     }
 
 }
